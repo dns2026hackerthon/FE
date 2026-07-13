@@ -1,7 +1,7 @@
 import type { Report, SortKey } from '@/types';
 import { useUiStore } from '@/store/uiStore';
 import { Icon } from '@/components/common/Icon';
-import { ReportGridCard } from '@/components/common/ReportCard';
+import { ReportCard } from '@/components/common/ReportCard';
 import { FeedCard } from '@/components/common/FeedCard';
 import { Loading, EmptyState } from '@/components/common/State';
 
@@ -28,11 +28,11 @@ export function FeedSection({ reports, loading }: Props) {
           있어요
         </p>
         <button
-          onClick={() => setFeedLayout(feedLayout === 'list' ? 'grid' : 'list')}
+          onClick={() => setFeedLayout(feedLayout === 'feed' ? 'list' : 'feed')}
           className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface shadow-card text-ink-muted"
-          aria-label="레이아웃 변경"
+          aria-label={feedLayout === 'feed' ? '리스트로 보기' : '피드 카드로 보기'}
         >
-          <Icon name={feedLayout === 'list' ? 'grid' : 'list'} size={17} />
+          <Icon name={feedLayout === 'feed' ? 'list' : 'image'} size={17} />
         </button>
       </div>
 
@@ -60,10 +60,10 @@ export function FeedSection({ reports, loading }: Props) {
           title="해당하는 신고가 없어요"
           description="다른 카테고리나 검색어를 시도해보세요."
         />
-      ) : feedLayout === 'grid' ? (
-        <div className="grid grid-cols-3 gap-1 px-4 pt-1">
+      ) : feedLayout === 'list' ? (
+        <div className="flex flex-col gap-2.5 px-4 pt-1">
           {reports.map((r) => (
-            <ReportGridCard key={r.id} report={r} />
+            <ReportCard key={r.id} report={r} />
           ))}
         </div>
       ) : (
