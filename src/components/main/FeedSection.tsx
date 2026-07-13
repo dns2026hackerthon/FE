@@ -1,7 +1,8 @@
 import type { Report, SortKey } from '@/types';
 import { useUiStore } from '@/store/uiStore';
 import { Icon } from '@/components/common/Icon';
-import { ReportCard, ReportGridCard } from '@/components/common/ReportCard';
+import { ReportGridCard } from '@/components/common/ReportCard';
+import { FeedCard } from '@/components/common/FeedCard';
 import { Loading, EmptyState } from '@/components/common/State';
 
 const SORTS: { key: SortKey; label: string }[] = [
@@ -66,9 +67,9 @@ export function FeedSection({ reports, loading }: Props) {
           ))}
         </div>
       ) : (
-        <div className="flex flex-col gap-2.5 px-4 pt-1">
+        <div className="flex flex-col gap-3 px-4 pt-1">
           {reports.map((r) => (
-            <ReportCard key={r.id} report={r} />
+            <FeedCard key={r.id} report={r} />
           ))}
         </div>
       )}

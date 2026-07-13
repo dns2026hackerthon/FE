@@ -31,7 +31,9 @@ export type IconName =
   | 'map'
   | 'message-circle'
   | 'send'
-  | 'crosshair';
+  | 'crosshair'
+  | 'share'
+  | 'bookmark';
 
 const PATHS: Record<IconName, JSX.Element> = {
   home: (
@@ -177,6 +179,14 @@ const PATHS: Record<IconName, JSX.Element> = {
       <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
     </>
   ),
+  share: (
+    <>
+      <path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7" />
+      <path d="M16 6l-4-4-4 4" />
+      <path d="M12 2v14" />
+    </>
+  ),
+  bookmark: <path d="M6 3h12v18l-6-4-6 4V3Z" />,
 };
 
 interface IconProps extends SVGProps<SVGSVGElement> {
