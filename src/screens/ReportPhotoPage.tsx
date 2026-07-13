@@ -4,7 +4,7 @@ import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDraftStore } from '@/store/draftStore';
 import { analyzePhoto } from '@/api/ai';
-import { compressImage } from '@/lib/image';
+import { compressImage, ImageProcessError } from '@/lib/image';
 import { getCurrentPosition } from '@/lib/geolocation';
 import { reverseGeocode } from '@/lib/kakaoMap';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -64,8 +64,12 @@ export default function ReportPhotoPage() {
       applyAi(suggestion);
       await locationPromise;
       setProgress(100);
-    } catch {
-      setPickError('사진을 처리하지 못했어요. 다른 사진으로 다시 시도해주세요.');
+    } catch (err) {
+      setPickError(
+        err instanceof ImageProcessError
+          ? err.message
+          : '사진을 처리하지 못했어요. 다른 사진으로 다시 시도해주세요.',
+      );
     } finally {
       stopProgress();
       setAnalyzing(false);

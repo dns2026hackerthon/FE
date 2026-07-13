@@ -6,6 +6,12 @@
  * "메모리 부족" 크래시로 이어진다. 여기서 원본을 최대한 빨리 축소해
  * 이후 파이프라인(미리보기, 상태 저장, 서버 업로드)이 항상 작은 이미지만
  * 다루도록 한다.
+ *
+ * 특정 이미지가 실패하는 가장 흔한 원인은 iPhone 기본 카메라 포맷인
+ * HEIC/HEIF다. Safari(iOS)는 네이티브로 디코드하지만 Chrome/Firefox/Android
+ * 등 대부분의 브라우저는 `createImageBitmap`/`<img>` 어느 쪽으로도 HEIC를
+ * 못 읽는다. 그래서 HEIC로 보이는 파일은 `heic2any`로 먼저 JPEG로 변환한 뒤
+ * 같은 압축 파이프를 태운다.
  */
 
 const DEFAULT_MAX_DIMENSION = 1280;
@@ -18,6 +24,27 @@ export interface CompressOptions {
   quality?: number;
 }
 
+export class ImageProcessError extends Error {
+  reason: 'heic' | 'decode' | 'unknown';
+  constructor(reason: 'heic' | 'decode' | 'unknown', message: string) {
+    super(message);
+    this.reason = reason;
+  }
+}
+
+function isHeic(file: File): boolean {
+  const type = file.type.toLowerCase();
+  if (type === 'image/heic' || type === 'image/heif') return true;
+  return /\.hei[cf]$/i.test(file.name);
+}
+
+/** HEIC/HEIF 파일을 JPEG Blob으로 변환 (동적 import — 필요할 때만 로드) */
+async function convertHeicToJpeg(file: File): Promise<Blob> {
+  const { default: heic2any } = await import('heic2any');
+  const result = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.85 });
+  return Array.isArray(result) ? result[0] : result;
+}
+
 /**
  * File을 축소된 JPEG data URL로 변환한다.
  * `createImageBitmap`을 지원하면 원본을 base64로 거치지 않고 바로
@@ -27,7 +54,42 @@ export async function compressImage(
   file: File,
   { maxDimension = DEFAULT_MAX_DIMENSION, quality = DEFAULT_QUALITY }: CompressOptions = {},
 ): Promise<string> {
-  const { width, height, draw } = await loadDrawable(file);
+  let source: File | Blob = file;
+
+  if (isHeic(file)) {
+    try {
+      source = await convertHeicToJpeg(file);
+    } catch (err) {
+      console.error('[image] HEIC 변환 실패', {
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        err,
+      });
+      throw new ImageProcessError(
+        'heic',
+        'HEIC 형식의 사진을 변환하지 못했어요. 카메라 설정을 "높은 호환성(JPEG)"으로 바꾼 뒤 다시 시도해주세요.',
+      );
+    }
+  }
+
+  let width: number;
+  let height: number;
+  let draw: Drawable['draw'];
+  try {
+    ({ width, height, draw } = await loadDrawable(source));
+  } catch (err) {
+    console.error('[image] 디코드 실패', {
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      err,
+    });
+    throw new ImageProcessError(
+      'decode',
+      '지원하지 않는 이미지 형식이에요. 다른 사진으로 시도해주세요.',
+    );
+  }
 
   const scale = Math.min(1, maxDimension / Math.max(width, height));
   const targetW = Math.max(1, Math.round(width * scale));
@@ -37,7 +99,9 @@ export async function compressImage(
   canvas.width = targetW;
   canvas.height = targetH;
   const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('CANVAS_CONTEXT_UNAVAILABLE');
+  if (!ctx) {
+    throw new ImageProcessError('unknown', '사진을 처리하지 못했어요. 다시 시도해주세요.');
+  }
   draw(ctx, targetW, targetH);
 
   // 리사이즈 후에도 용량이 크면 화질을 단계적으로 낮춰 재인코딩
@@ -57,11 +121,15 @@ interface Drawable {
   draw: (ctx: CanvasRenderingContext2D, w: number, h: number) => void;
 }
 
-async function loadDrawable(file: File): Promise<Drawable> {
+async function loadDrawable(source: File | Blob): Promise<Drawable> {
   if (typeof createImageBitmap === 'function') {
-    const bitmap = await createImageBitmap(file, {
+    const bitmap = await createImageBitmap(source, {
       imageOrientation: 'from-image',
     });
+    if (bitmap.width === 0 || bitmap.height === 0) {
+      bitmap.close();
+      throw new Error('EMPTY_BITMAP');
+    }
     return {
       width: bitmap.width,
       height: bitmap.height,
@@ -73,7 +141,7 @@ async function loadDrawable(file: File): Promise<Drawable> {
   }
 
   // 구형 브라우저 폴백: object URL로 디코드 (data URL 왕복보다는 가볍다)
-  const url = URL.createObjectURL(file);
+  const url = URL.createObjectURL(source);
   try {
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
       const el = new Image();
@@ -81,6 +149,9 @@ async function loadDrawable(file: File): Promise<Drawable> {
       el.onerror = () => reject(new Error('IMAGE_DECODE_FAILED'));
       el.src = url;
     });
+    if (img.naturalWidth === 0 || img.naturalHeight === 0) {
+      throw new Error('EMPTY_IMAGE');
+    }
     return {
       width: img.naturalWidth,
       height: img.naturalHeight,

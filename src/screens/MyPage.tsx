@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { listMyReports, deleteReport } from '@/api/reports';
 import { useAsync } from '@/hooks/useAsync';
-import { compressImage } from '@/lib/image';
+import { compressImage, ImageProcessError } from '@/lib/image';
 import { TopBar } from '@/components/layout/TopBar';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { Icon } from '@/components/common/Icon';
@@ -27,6 +27,7 @@ export default function MyPage() {
   const [pw2, setPw2] = useState('');
   const [busy, setBusy] = useState(false);
   const [editMode, setEditMode] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
 
   const { data, loading, reload } = useAsync(
     () => (user ? listMyReports(user.id) : Promise.resolve([])),
@@ -36,9 +37,18 @@ export default function MyPage() {
 
   const onAvatar = async (file?: File | null) => {
     if (!file) return;
-    // 프로필 사진은 더 작게 (아바타 표시용)
-    const dataUrl = await compressImage(file, { maxDimension: 512, quality: 0.8 });
-    await updateProfile({ profileImage: dataUrl });
+    setAvatarError(null);
+    try {
+      // 프로필 사진은 더 작게 (아바타 표시용)
+      const dataUrl = await compressImage(file, { maxDimension: 512, quality: 0.8 });
+      await updateProfile({ profileImage: dataUrl });
+    } catch (err) {
+      setAvatarError(
+        err instanceof ImageProcessError
+          ? err.message
+          : '사진을 처리하지 못했어요. 다른 사진으로 다시 시도해주세요.',
+      );
+    }
   };
 
   const onChangePassword = async () => {
@@ -116,6 +126,12 @@ export default function MyPage() {
           )}
         </div>
       </section>
+
+      {avatarError && (
+        <p className="px-5 pb-2 text-[12px] font-medium text-risk-high">
+          {avatarError}
+        </p>
+      )}
 
       <input
         ref={avatarRef}
