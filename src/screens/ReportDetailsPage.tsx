@@ -2,15 +2,28 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { CategoryId, RiskLevel } from '@/types';
 import { useDraftStore } from '@/store/draftStore';
 import { useAuthStore } from '@/store/authStore';
 import { createReport } from '@/api/reports';
-import { CATEGORIES, RISK_LEVELS, DEFAULT_CENTER } from '@/constants/categories';
+import {
+  HAZARD_TYPES,
+  HAZARD_ETC,
+  categoryForHazard,
+  riskMeta,
+  RISK_MIN,
+  RISK_MAX,
+} from '@/constants/categories';
+import { getCurrentPosition } from '@/lib/geolocation';
+import { reverseGeocode } from '@/lib/kakaoMap';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { TopBar } from '@/components/layout/TopBar';
 import { Icon } from '@/components/common/Icon';
 import { Button } from '@/components/common/Button';
+
+const RISK_OPTIONS = Array.from(
+  { length: RISK_MAX - RISK_MIN + 1 },
+  (_, i) => RISK_MIN + i,
+);
 
 export default function ReportDetailsPage() {
   const router = useRouter();
@@ -18,17 +31,52 @@ export default function ReportDetailsPage() {
   const { draft, aiSuggestion, patch, reset } = useDraftStore();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [locationStatus, setLocationStatus] = useState<
+    'loading' | 'done' | 'failed'
+  >(draft.location ? 'done' : 'loading');
   // 등록 완료 후 draft가 비워져도 1단계로 튕기지 않도록 하는 플래그
   const submittedRef = useRef(false);
 
-  // 위치 기본값 세팅 (AI가 없을 때 폴백)
+  // 드롭다운 표시 상태: draft.hazardType이 목록에 있으면 그 값, 아니면 '기타'+직접입력
+  const isPreset =
+    draft.hazardType !== '' &&
+    draft.hazardType !== HAZARD_ETC &&
+    (HAZARD_TYPES as readonly string[]).includes(draft.hazardType);
+  const [hazardSelect, setHazardSelect] = useState<string>(
+    isPreset ? draft.hazardType : draft.hazardType ? HAZARD_ETC : '',
+  );
+  const [hazardCustom, setHazardCustom] = useState<string>(
+    isPreset ? '' : draft.hazardType,
+  );
+
+  // 위치: 기기 GPS → 좌표, Kakao 역지오코딩 → 주소. (AI/서울 기본값을 쓰지 않는다)
   useEffect(() => {
-    if (!draft.location) {
-      patch({
-        location: DEFAULT_CENTER,
-        address: draft.address || '서울시 성북구 정릉로 77',
-      });
+    if (draft.location) {
+      setLocationStatus('done');
+      return;
     }
+    let cancelled = false;
+    (async () => {
+      try {
+        const point = await getCurrentPosition();
+        if (cancelled) return;
+        const address = await reverseGeocode(point);
+        if (cancelled) return;
+        patch({
+          location: point,
+          address:
+            draft.address ||
+            address ||
+            `위도 ${point.lat.toFixed(5)}, 경도 ${point.lng.toFixed(5)}`,
+        });
+        setLocationStatus('done');
+      } catch {
+        if (!cancelled) setLocationStatus('failed');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -43,18 +91,46 @@ export default function ReportDetailsPage() {
     return null;
   }
 
-  const canSubmit = Boolean(draft.category && draft.title.trim());
+  const finalHazard =
+    hazardSelect === HAZARD_ETC ? hazardCustom.trim() : hazardSelect;
+  const canSubmit = Boolean(
+    finalHazard && draft.title.trim() && draft.location,
+  );
+
+  const onHazardSelect = (value: string) => {
+    setHazardSelect(value);
+    if (value !== HAZARD_ETC) {
+      patch({ hazardType: value, category: categoryForHazard(value) });
+    } else {
+      patch({
+        hazardType: hazardCustom.trim(),
+        category: categoryForHazard(HAZARD_ETC),
+      });
+    }
+  };
+
+  const onHazardCustom = (value: string) => {
+    setHazardCustom(value);
+    patch({
+      hazardType: value.trim(),
+      category: categoryForHazard(HAZARD_ETC),
+    });
+  };
 
   const onSubmit = async () => {
-    if (!canSubmit) {
+    if (!finalHazard || !draft.title.trim()) {
       setError('위험 유형과 제목을 입력해주세요.');
+      return;
+    }
+    if (!draft.location) {
+      setError('위치를 확인할 수 없어요. 위치 권한을 허용해주세요.');
       return;
     }
     setSubmitting(true);
     setError(null);
     try {
       const created = await createReport({
-        draft,
+        draft: { ...draft, hazardType: finalHazard },
         authorId: user?.id ?? 'guest',
         authorNickname: user?.nickname ?? '익명',
       });
@@ -76,6 +152,9 @@ export default function ReportDetailsPage() {
       });
     }
   };
+
+  const risk = draft.risk;
+  const riskColor = riskMeta(risk).color;
 
   return (
     <AppLayout withNav={false}>
@@ -109,20 +188,30 @@ export default function ReportDetailsPage() {
           </div>
         </Field>
 
-        {/* 위험 유형 */}
+        {/* 위험 유형 — 드롭다운 + 기타 직접 입력 */}
         <Field label="위험 유형" aiHint={!!aiSuggestion}>
-          <div className="grid grid-cols-2 gap-2">
-            {CATEGORIES.map((c) => (
-              <CategoryChip
-                key={c.id}
-                id={c.id}
-                label={c.label}
-                color={c.color}
-                selected={draft.category === c.id}
-                onSelect={() => patch({ category: c.id })}
-              />
+          <select
+            value={hazardSelect}
+            onChange={(e) => onHazardSelect(e.target.value)}
+            className="w-full appearance-none rounded-2xl border border-black/10 bg-surface px-4 py-3.5 text-[15px] text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+          >
+            <option value="" disabled>
+              위험 유형을 선택하세요
+            </option>
+            {HAZARD_TYPES.map((h) => (
+              <option key={h} value={h}>
+                {h}
+              </option>
             ))}
-          </div>
+          </select>
+          {hazardSelect === HAZARD_ETC && (
+            <input
+              value={hazardCustom}
+              onChange={(e) => onHazardCustom(e.target.value)}
+              placeholder="위험 유형을 직접 입력하세요"
+              className="mt-2 w-full rounded-2xl border border-black/10 bg-surface px-4 py-3.5 text-[15px] text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+            />
+          )}
         </Field>
 
         {/* 위치 */}
@@ -134,28 +223,42 @@ export default function ReportDetailsPage() {
                 value={draft.address}
                 onChange={(e) => patch({ address: e.target.value })}
                 className="w-full bg-transparent text-[14px] font-semibold text-ink outline-none"
-                placeholder="주소를 입력하세요"
+                placeholder={
+                  locationStatus === 'loading'
+                    ? '현재 위치 확인 중...'
+                    : '주소를 입력하세요'
+                }
               />
               <p className="mt-0.5 text-[11px] text-ink-muted">
-                현재 위치를 기준으로 설정됨 · 변경
+                {locationStatus === 'loading' && '기기 GPS로 현재 위치를 확인하고 있어요'}
+                {locationStatus === 'done' && '현재 위치(GPS) 기준으로 설정됨 · 주소 수정 가능'}
+                {locationStatus === 'failed' &&
+                  '위치를 가져올 수 없어요. 위치 권한을 허용해주세요. (HTTPS/localhost 필요)'}
               </p>
             </div>
           </div>
         </Field>
 
-        {/* 위험도 */}
-        <Field label="위험도">
-          <div className="flex gap-2">
-            {RISK_LEVELS.map((r) => (
-              <RiskChip
-                key={r.id}
-                id={r.id}
-                label={r.label}
-                color={r.color}
-                selected={draft.risk === r.id}
-                onSelect={() => patch({ risk: r.id })}
-              />
-            ))}
+        {/* 위험도 — 1~10 정수 */}
+        <Field label={`위험도 (${RISK_MIN}~${RISK_MAX})`}>
+          <div className="flex items-center gap-3">
+            <select
+              value={risk}
+              onChange={(e) => patch({ risk: Number(e.target.value) })}
+              className="w-24 appearance-none rounded-2xl border border-black/10 bg-surface px-4 py-3.5 text-center text-[15px] font-bold text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+            >
+              {RISK_OPTIONS.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+            <span
+              className="rounded-full px-3 py-1 text-[13px] font-bold text-white"
+              style={{ backgroundColor: riskColor }}
+            >
+              {risk}/10
+            </span>
           </div>
         </Field>
 
@@ -239,68 +342,5 @@ function Field({
       </div>
       {children}
     </div>
-  );
-}
-
-function CategoryChip({
-  id,
-  label,
-  color,
-  selected,
-  onSelect,
-}: {
-  id: CategoryId;
-  label: string;
-  color: string;
-  selected: boolean;
-  onSelect: () => void;
-}) {
-  void id;
-  return (
-    <button
-      onClick={onSelect}
-      className={`flex items-center gap-2 rounded-2xl border px-3 py-3 text-[14px] font-semibold transition ${
-        selected
-          ? 'border-transparent bg-navy text-white'
-          : 'border-black/10 bg-surface text-ink'
-      }`}
-    >
-      <span
-        className="h-2.5 w-2.5 rounded-full"
-        style={{ backgroundColor: color }}
-      />
-      {label}
-    </button>
-  );
-}
-
-function RiskChip({
-  id,
-  label,
-  color,
-  selected,
-  onSelect,
-}: {
-  id: RiskLevel;
-  label: string;
-  color: string;
-  selected: boolean;
-  onSelect: () => void;
-}) {
-  void id;
-  return (
-    <button
-      onClick={onSelect}
-      className={`flex flex-1 items-center justify-center gap-1.5 rounded-2xl border py-3 text-[14px] font-bold transition ${
-        selected ? 'border-transparent text-white' : 'border-black/10 bg-surface text-ink-muted'
-      }`}
-      style={selected ? { backgroundColor: color } : undefined}
-    >
-      <span
-        className="h-2 w-2 rounded-full"
-        style={{ backgroundColor: selected ? '#fff' : color }}
-      />
-      {label}
-    </button>
   );
 }

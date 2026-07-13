@@ -50,45 +50,50 @@ export const CATEGORY_MAP: Record<CategoryId, CategoryMeta> = CATEGORIES.reduce(
   {} as Record<CategoryId, CategoryMeta>,
 );
 
-export interface RiskMeta {
-  id: RiskLevel;
-  label: string;
-  textClass: string;
-  bgClass: string;
-  color: string;
+/** 위험 유형 드롭다운 옵션. '기타' 선택 시 사용자가 직접 입력한다. */
+export const HAZARD_TYPES = [
+  '침수',
+  '빙판길',
+  '도로 파손',
+  '싱크홀',
+  '누전',
+  '쓰러진 나무',
+  '낙하물',
+  '화재',
+  '기타',
+] as const;
+
+export const HAZARD_ETC = '기타';
+
+/** 위험 유형 → 지도/피드 필터용 카테고리 자동 매핑 */
+const HAZARD_TO_CATEGORY: Record<string, CategoryId> = {
+  침수: 'road',
+  빙판길: 'road',
+  '도로 파손': 'road',
+  싱크홀: 'road',
+  누전: 'facility',
+  '쓰러진 나무': 'walk',
+  낙하물: 'walk',
+  화재: 'facility',
+};
+
+export function categoryForHazard(hazardType: string): CategoryId {
+  return HAZARD_TO_CATEGORY[hazardType] ?? 'safety';
 }
 
-export const RISK_LEVELS: RiskMeta[] = [
-  {
-    id: 'low',
-    label: '낮음',
-    textClass: 'text-risk-low',
-    bgClass: 'bg-risk-low',
-    color: '#16A34A',
-  },
-  {
-    id: 'mid',
-    label: '보통',
-    textClass: 'text-risk-mid',
-    bgClass: 'bg-risk-mid',
-    color: '#D97706',
-  },
-  {
-    id: 'high',
-    label: '높음',
-    textClass: 'text-risk-high',
-    bgClass: 'bg-risk-high',
-    color: '#DC2626',
-  },
-];
+/** 위험도(1~10) 구간별 표시 정보 */
+export function riskMeta(risk: RiskLevel): {
+  textClass: string;
+  color: string;
+} {
+  if (risk >= 8) return { textClass: 'text-risk-high', color: '#DC2626' };
+  if (risk >= 4) return { textClass: 'text-risk-mid', color: '#D97706' };
+  return { textClass: 'text-risk-low', color: '#16A34A' };
+}
 
-export const RISK_MAP: Record<RiskLevel, RiskMeta> = RISK_LEVELS.reduce(
-  (acc, r) => {
-    acc[r.id] = r;
-    return acc;
-  },
-  {} as Record<RiskLevel, RiskMeta>,
-);
+export const RISK_MIN = 1;
+export const RISK_MAX = 10;
+export const RISK_DEFAULT = 5;
 
 /** 서울시청 근처 기본 좌표 (지도 초기 중심) — 실제 위치 실패 시 폴백 */
 export const DEFAULT_CENTER = { lat: 37.6096, lng: 127.0175 }; // 성북구 근처

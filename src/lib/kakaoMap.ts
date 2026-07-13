@@ -41,6 +41,38 @@ export function loadKakaoMap(): Promise<typeof window.kakao> {
   return loadPromise;
 }
 
+/** 좌표 → 도로명/지번 주소 (Kakao Geocoder). 실패 시 null. */
+export async function reverseGeocode(p: GeoPoint): Promise<string | null> {
+  if (!hasKakaoKey) return null;
+  const kakao = await loadKakaoMap().catch(() => null);
+  if (!kakao) return null;
+
+  return new Promise((resolve) => {
+    const geocoder = new kakao.maps.services.Geocoder();
+    geocoder.coord2Address(
+      p.lng,
+      p.lat,
+      (
+        result: Array<{
+          road_address?: { address_name: string } | null;
+          address?: { address_name: string } | null;
+        }>,
+        status: string,
+      ) => {
+        if (status === kakao.maps.services.Status.OK && result[0]) {
+          resolve(
+            result[0].road_address?.address_name ||
+              result[0].address?.address_name ||
+              null,
+          );
+        } else {
+          resolve(null);
+        }
+      },
+    );
+  });
+}
+
 /** 키워드로 장소/지역을 검색해 첫 결과의 좌표를 반환한다. (지역검색) */
 export async function searchKakaoPlace(query: string): Promise<GeoPoint | null> {
   if (!hasKakaoKey) return null;

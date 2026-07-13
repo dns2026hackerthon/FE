@@ -3,8 +3,8 @@
 /** 위험 유형 카테고리 (전 화면 공통) */
 export type CategoryId = 'walk' | 'road' | 'facility' | 'safety';
 
-/** 위험도 */
-export type RiskLevel = 'low' | 'mid' | 'high';
+/** 위험도 — 1(낮음) ~ 10(높음) 정수 */
+export type RiskLevel = number;
 
 /** 위치 정보 */
 export interface GeoPoint {
@@ -34,6 +34,8 @@ export interface Comment {
 export interface Report {
   id: string;
   category: CategoryId;
+  /** 위험 유형 (침수/빙판길/... 또는 사용자가 직접 입력한 기타 유형) */
+  hazardType: string;
   risk: RiskLevel;
   title: string;
   description: string;
@@ -62,6 +64,8 @@ export type FeedLayout = 'list' | 'grid';
 export interface ReportDraft {
   imageDataUrl: string | null;
   category: CategoryId | null;
+  /** 드롭다운에서 고른(또는 기타로 직접 입력한) 위험 유형 */
+  hazardType: string;
   risk: RiskLevel;
   address: string;
   location: GeoPoint | null;
@@ -69,12 +73,13 @@ export interface ReportDraft {
   description: string;
 }
 
-/** AI 사진 분석 결과 (스텁 → 추후 서버 대체) */
+/**
+ * AI 사진 분석 결과 (스텁 → 추후 서버 대체).
+ * 위치/주소는 AI가 아니라 기기 GPS에서 얻으므로 포함하지 않는다.
+ */
 export interface AiSuggestion {
-  category: CategoryId;
+  hazardType: string;
   risk: RiskLevel;
   title: string;
   description: string;
-  address: string;
-  location: GeoPoint;
 }

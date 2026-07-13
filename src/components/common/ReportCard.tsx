@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import type { Report } from '@/types';
 import { Icon } from './Icon';
-import { CategoryBadge, RiskBadge } from './Badges';
+import { CategoryBadge, HazardBadge, RiskBadge } from './Badges';
 import { formatRelativeTime, formatCount } from '@/lib/format';
 
 /** 피드 리스트용 가로형 카드 */
@@ -16,6 +16,7 @@ export function ReportCard({ report }: { report: Report }) {
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5">
             <CategoryBadge category={report.category} />
+            <HazardBadge hazardType={report.hazardType} />
           </div>
           <RiskBadge risk={report.risk} />
         </div>

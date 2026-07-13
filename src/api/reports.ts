@@ -72,12 +72,14 @@ export async function createReport({
   authorId,
   authorNickname,
 }: CreateReportInput): Promise<Report> {
-  if (!draft.category) throw new ApiError('위험 유형을 선택해주세요.', 400);
+  if (!draft.hazardType.trim())
+    throw new ApiError('위험 유형을 선택해주세요.', 400);
   if (!draft.location) throw new ApiError('위치 정보가 필요합니다.', 400);
 
   const report: Report = {
     id: genId('r'),
-    category: draft.category,
+    category: draft.category ?? 'safety',
+    hazardType: draft.hazardType.trim(),
     risk: draft.risk,
     title: draft.title.trim() || '제목 없는 신고',
     description: draft.description.trim(),
@@ -117,7 +119,9 @@ export async function deleteReport(id: string): Promise<void> {
 
 export async function updateReport(
   id: string,
-  patch: Partial<Pick<Report, 'title' | 'description' | 'category' | 'risk'>>,
+  patch: Partial<
+    Pick<Report, 'title' | 'description' | 'category' | 'hazardType' | 'risk'>
+  >,
 ): Promise<Report> {
   const found = mockDb.reports.find((r) => r.id === id);
   if (!found) throw new ApiError('신고를 찾을 수 없습니다.', 404);

@@ -16,17 +16,35 @@ export default function ReportPhotoPage() {
   const cameraRef = useRef<HTMLInputElement>(null);
   const albumRef = useRef<HTMLInputElement>(null);
   const [analyzing, setAnalyzing] = useState(false);
+  // 인제스천(사진 읽기 → 업로드 → AI 분석) 진행률 0~100
+  const [progress, setProgress] = useState(0);
+  const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopProgress = () => {
+    if (progressTimer.current) {
+      clearInterval(progressTimer.current);
+      progressTimer.current = null;
+    }
+  };
 
   const onPick = async (file?: File | null) => {
     if (!file) return;
-    const dataUrl = await fileToDataUrl(file);
-    setImage(dataUrl);
-    // AI 분석 시작 (백그라운드)
     setAnalyzing(true);
+    setProgress(5); // 파일 읽기 시작
+    // 분석 완료 전까지 진행률을 단계적으로 올린다 (완료 시 100%)
+    stopProgress();
+    progressTimer.current = setInterval(() => {
+      setProgress((p) => (p < 90 ? p + 5 : p));
+    }, 120);
     try {
+      const dataUrl = await fileToDataUrl(file);
+      setImage(dataUrl);
+      setProgress((p) => Math.max(p, 30)); // 읽기 완료
       const suggestion = await analyzePhoto(dataUrl);
       applyAi(suggestion);
+      setProgress(100);
     } finally {
+      stopProgress();
       setAnalyzing(false);
     }
   };
@@ -52,9 +70,17 @@ export default function ReportPhotoPage() {
               className="aspect-[4/3] w-full object-cover"
             />
             {analyzing && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-navy/50 text-white">
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-navy/60 px-8 text-white">
                 <Icon name="sparkles" size={26} />
-                <p className="text-sm font-semibold">AI가 위험 정보를 분석 중...</p>
+                <p className="text-sm font-semibold">
+                  AI 분석 진행률 {progress}%
+                </p>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-white/25">
+                  <div
+                    className="h-full rounded-full bg-brand"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
               </div>
             )}
           </div>
