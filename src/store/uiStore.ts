@@ -3,7 +3,7 @@ import type { CategoryId, SortKey, ViewMode, FeedLayout } from '@/types';
 
 interface UiState {
   viewMode: ViewMode; // 지도뷰 / 피드뷰
-  feedLayout: FeedLayout; // 리스트 / 그리드
+  feedLayout: FeedLayout; // 인스타 카드 피드 / 컴팩트 리스트
   category: CategoryId | null; // 선택된 카테고리 필터 (null = 전체)
   sort: SortKey;
   query: string;
@@ -18,7 +18,7 @@ interface UiState {
 
 export const useUiStore = create<UiState>((set) => ({
   viewMode: 'map',
-  feedLayout: 'list',
+  feedLayout: 'feed',
   category: null,
   sort: 'latest',
   query: '',

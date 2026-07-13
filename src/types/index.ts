@@ -57,8 +57,8 @@ export type SortKey = 'latest' | 'views' | 'likes';
 /** 메인 뷰 모드 */
 export type ViewMode = 'map' | 'feed';
 
-/** 피드 레이아웃 (리스트 / 그리드) */
-export type FeedLayout = 'list' | 'grid';
+/** 피드 레이아웃 (인스타 카드 피드 / 컴팩트 리스트) */
+export type FeedLayout = 'feed' | 'list';
 
 /** 신고 작성 폼 데이터 */
 export interface ReportDraft {
