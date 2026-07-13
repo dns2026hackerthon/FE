@@ -14,6 +14,8 @@ interface Props {
   myLocation: GeoPoint | null;
   locating: boolean;
   onLocateMe: () => void;
+  geoError?: string | null;
+  onDismissGeoError?: () => void;
 }
 
 /** 지도 + 하단 '이 주변 위험' 목록 */
@@ -24,6 +26,8 @@ export function MapSection({
   myLocation,
   locating,
   onLocateMe,
+  geoError,
+  onDismissGeoError,
 }: Props) {
   const router = useRouter();
 
@@ -37,11 +41,11 @@ export function MapSection({
           myLocation={myLocation}
           onSelectReport={(id) => router.push(`/report/${id}`)}
         />
-        {/* 현재 위치로 이동 버튼 */}
+        {/* 현재 위치로 이동 버튼 — Kakao 타일 위에 항상 보이도록 z-index 부여 */}
         <button
           onClick={onLocateMe}
           disabled={locating}
-          className="absolute bottom-3 right-3 flex h-10 w-10 items-center justify-center rounded-full bg-surface text-ink shadow-md active:scale-95 disabled:opacity-60"
+          className="absolute bottom-3 right-3 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-surface text-ink shadow-md ring-1 ring-black/5 active:scale-95 disabled:opacity-60"
           aria-label="현재 위치로"
         >
           {locating ? (
@@ -50,6 +54,16 @@ export function MapSection({
             <Icon name="crosshair" size={20} />
           )}
         </button>
+        {/* 위치 오류 안내 토스트 */}
+        {geoError && (
+          <button
+            onClick={onDismissGeoError}
+            className="absolute inset-x-3 bottom-3 z-30 rounded-xl bg-navy/90 px-3 py-2 text-left text-[12px] leading-snug text-white shadow-lg"
+          >
+            {geoError}
+            <span className="mt-0.5 block text-[10px] text-white/60">탭하여 닫기</span>
+          </button>
+        )}
       </div>
 
       {/* 주변 위험 목록 */}

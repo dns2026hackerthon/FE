@@ -6,7 +6,7 @@ import type { GeoPoint } from '@/types';
 import { useUiStore } from '@/store/uiStore';
 import { listReports } from '@/api/reports';
 import { useAsync } from '@/hooks/useAsync';
-import { getCurrentPosition } from '@/lib/geolocation';
+import { getCurrentPosition, GeoError } from '@/lib/geolocation';
 import { searchKakaoPlace } from '@/lib/kakaoMap';
 import { DEFAULT_CENTER } from '@/constants/categories';
 import { LogoWordmark } from '@/components/common/Logo';
@@ -36,6 +36,7 @@ export default function MainPage() {
   const [mapCenter, setMapCenter] = useState<GeoPoint>(DEFAULT_CENTER);
   const [myLocation, setMyLocation] = useState<GeoPoint | null>(null);
   const [locating, setLocating] = useState(false);
+  const [geoError, setGeoError] = useState<string | null>(null);
 
   useEffect(() => {
     getCurrentPosition()
@@ -44,18 +45,21 @@ export default function MainPage() {
         setMapCenter(point);
       })
       .catch(() => {
-        // 위치 권한 거부/미지원 시 기본 좌표 유지
+        // 최초 진입 실패는 조용히 (기본 좌표 유지). 버튼 클릭 시엔 안내한다.
       });
   }, []);
 
   const locateMe = useCallback(async () => {
     setLocating(true);
+    setGeoError(null);
     try {
       const point = await getCurrentPosition();
       setMyLocation(point);
       setMapCenter(point);
-    } catch {
-      // 조용히 무시 (권한 거부 등)
+    } catch (err) {
+      setGeoError(
+        err instanceof GeoError ? err.message : '현재 위치를 가져올 수 없어요.',
+      );
     } finally {
       setLocating(false);
     }
@@ -111,6 +115,8 @@ export default function MainPage() {
           myLocation={myLocation}
           locating={locating}
           onLocateMe={locateMe}
+          geoError={geoError}
+          onDismissGeoError={() => setGeoError(null)}
         />
       ) : (
         <FeedSection reports={reports} loading={loading} />
