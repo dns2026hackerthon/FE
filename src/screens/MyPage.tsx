@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { listMyReports, deleteReport } from '@/api/reports';
 import { useAsync } from '@/hooks/useAsync';
-import { fileToDataUrl } from '@/lib/image';
+import { compressImage } from '@/lib/image';
 import { TopBar } from '@/components/layout/TopBar';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { Icon } from '@/components/common/Icon';
@@ -36,7 +36,8 @@ export default function MyPage() {
 
   const onAvatar = async (file?: File | null) => {
     if (!file) return;
-    const dataUrl = await fileToDataUrl(file);
+    // 프로필 사진은 더 작게 (아바타 표시용)
+    const dataUrl = await compressImage(file, { maxDimension: 512, quality: 0.8 });
     await updateProfile({ profileImage: dataUrl });
   };
 
