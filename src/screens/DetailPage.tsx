@@ -15,7 +15,7 @@ import { useAuthStore } from '@/store/authStore';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { TopBar } from '@/components/layout/TopBar';
 import { Icon } from '@/components/common/Icon';
-import { CategoryBadge, RiskBadge } from '@/components/common/Badges';
+import { CategoryBadge, HazardBadge, RiskBadge } from '@/components/common/Badges';
 import { Loading, EmptyState } from '@/components/common/State';
 import { formatRelativeTime, formatShortRelative, formatCount } from '@/lib/format';
 
@@ -117,6 +117,7 @@ export default function DetailPage() {
         {/* 유형 / 위험도 */}
         <div className="flex items-center gap-2">
           <CategoryBadge category={current.category} />
+          <HazardBadge hazardType={current.hazardType} />
           <RiskBadge risk={current.risk} />
         </div>
 

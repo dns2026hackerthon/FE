@@ -18,7 +18,7 @@ export function AppBootstrap({ children }: { children: React.ReactNode }) {
   if (!initialized) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-navy">
-        <span className="h-8 w-8 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+        <span className="text-sm text-white/70">불러오는 중...</span>
       </div>
     );
   }

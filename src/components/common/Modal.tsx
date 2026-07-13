@@ -29,7 +29,7 @@ export function Modal({ open, onClose, title, children }: Props) {
         onClick={onClose}
         aria-hidden
       />
-      <div className="relative mx-auto w-full max-w-app rounded-t-3xl bg-surface p-5 pb-8 shadow-2xl animate-[slideUp_0.2s_ease]">
+      <div className="relative mx-auto w-full max-w-app rounded-t-3xl bg-surface p-5 pb-8 shadow-2xl">
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-black/10" />
         {title && (
           <h3 className="mb-4 text-center text-[16px] font-bold text-ink">

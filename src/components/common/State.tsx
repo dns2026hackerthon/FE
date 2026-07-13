@@ -4,7 +4,6 @@ import { Icon, type IconName } from './Icon';
 export function Loading({ label = '불러오는 중...' }: { label?: string }) {
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-16 text-ink-faint">
-      <span className="h-7 w-7 animate-spin rounded-full border-2 border-black/10 border-t-brand" />
       <span className="text-sm">{label}</span>
     </div>
   );

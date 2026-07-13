@@ -1,10 +1,12 @@
 import { create } from 'zustand';
 import type { ReportDraft, AiSuggestion } from '@/types';
+import { categoryForHazard, RISK_DEFAULT } from '@/constants/categories';
 
 const emptyDraft: ReportDraft = {
   imageDataUrl: null,
   category: null,
-  risk: 'mid',
+  hazardType: '',
+  risk: RISK_DEFAULT,
   address: '',
   location: null,
   title: '',
@@ -27,17 +29,18 @@ export const useDraftStore = create<DraftState>((set) => ({
   setImage: (imageDataUrl) =>
     set((s) => ({ draft: { ...s.draft, imageDataUrl } })),
 
+  // AI는 위험 유형/위험도/제목/설명만 제안한다. 위치·주소는 기기 GPS에서 온다.
   applyAi: (aiSuggestion) =>
     set((s) => ({
       aiSuggestion,
       draft: {
         ...s.draft,
-        category: s.draft.category ?? aiSuggestion.category,
+        hazardType: s.draft.hazardType || aiSuggestion.hazardType,
+        category:
+          s.draft.category ?? categoryForHazard(aiSuggestion.hazardType),
         risk: aiSuggestion.risk,
         title: s.draft.title || aiSuggestion.title,
         description: s.draft.description || aiSuggestion.description,
-        address: s.draft.address || aiSuggestion.address,
-        location: s.draft.location ?? aiSuggestion.location,
       },
     })),
 

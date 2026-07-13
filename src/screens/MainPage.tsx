@@ -37,12 +37,15 @@ export default function MainPage() {
   const [myLocation, setMyLocation] = useState<GeoPoint | null>(null);
   const [locating, setLocating] = useState(false);
   const [geoError, setGeoError] = useState<string | null>(null);
+  // 같은 좌표로도 지도 이동을 강제하기 위한 시퀀스 (버튼 연타 대응)
+  const [moveSeq, setMoveSeq] = useState(0);
 
   useEffect(() => {
     getCurrentPosition()
       .then((point) => {
         setMyLocation(point);
         setMapCenter(point);
+        setMoveSeq((n) => n + 1);
       })
       .catch(() => {
         // 최초 진입 실패는 조용히 (기본 좌표 유지). 버튼 클릭 시엔 안내한다.
@@ -56,6 +59,7 @@ export default function MainPage() {
       const point = await getCurrentPosition();
       setMyLocation(point);
       setMapCenter(point);
+      setMoveSeq((n) => n + 1);
     } catch (err) {
       setGeoError(
         err instanceof GeoError ? err.message : '현재 위치를 가져올 수 없어요.',
@@ -70,7 +74,10 @@ export default function MainPage() {
     async (q: string) => {
       if (viewMode !== 'map' || !q.trim()) return;
       const point = await searchKakaoPlace(q.trim());
-      if (point) setMapCenter(point);
+      if (point) {
+        setMapCenter(point);
+        setMoveSeq((n) => n + 1);
+      }
     },
     [viewMode],
   );
@@ -112,6 +119,7 @@ export default function MainPage() {
           reports={reports}
           loading={loading}
           center={mapCenter}
+          moveSeq={moveSeq}
           myLocation={myLocation}
           locating={locating}
           onLocateMe={locateMe}
