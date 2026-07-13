@@ -34,12 +34,12 @@ export function MapSection({
   geoError,
   onDismissGeoError,
 }: Props) {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[] | null>(null);
 
-  // 마커로 선택한 게시물 (삭제 등으로 목록에서 사라지면 자동 해제)
-  const selected = selectedId
-    ? reports.find((r) => r.id === selectedId) ?? null
-    : null;
+  // 마커(클러스터)로 선택한 게시물들 (삭제 등으로 목록에서 사라지면 자동으로 빠짐)
+  const selected = selectedIds
+    ? reports.filter((r) => selectedIds.includes(r.id))
+    : [];
 
   // 내 위치 기준 500m 이내 신고만 '이 주변 위험'에 노출
   const nearby = myLocation
@@ -57,7 +57,7 @@ export function MapSection({
           center={center}
           moveSeq={moveSeq}
           myLocation={myLocation}
-          onSelectReport={setSelectedId}
+          onSelectReports={setSelectedIds}
         />
         {/* 현재 위치로 이동 버튼 — Kakao 타일 위에 항상 보이도록 z-index 부여 */}
         <button
@@ -80,22 +80,39 @@ export function MapSection({
         )}
       </div>
 
-      {selected ? (
-        /* 마커 선택 시: 해당 게시물만 표시 */
+      {selectedIds ? (
+        /* 마커(클러스터) 선택 시: 같은 위치에 묶인 신고들을 표시 */
         <>
           <div className="mt-4 flex items-center justify-between px-4">
-            <h2 className="text-[15px] font-bold text-ink">선택한 신고</h2>
+            <div>
+              <h2 className="text-[15px] font-bold text-ink">선택한 신고</h2>
+              {selected.length > 1 && (
+                <p className="text-[11px] text-ink-muted">
+                  같은 위치에 {selected.length}건이 있어요
+                </p>
+              )}
+            </div>
             <button
-              onClick={() => setSelectedId(null)}
+              onClick={() => setSelectedIds(null)}
               className="flex items-center gap-1 rounded-full bg-black/[0.05] px-3 py-1.5 text-[12px] font-semibold text-ink-muted"
             >
               <Icon name="x" size={14} />
               닫기
             </button>
           </div>
-          <div className="px-4 pb-2 pt-3">
-            <ReportCard report={selected} />
-          </div>
+          {selected.length === 0 ? (
+            <EmptyState
+              icon="map-pin"
+              title="게시물을 찾을 수 없어요"
+              description="이미 삭제되었을 수 있어요."
+            />
+          ) : (
+            <div className="flex flex-col gap-2.5 px-4 pb-2 pt-3">
+              {selected.map((r) => (
+                <ReportCard key={r.id} report={r} />
+              ))}
+            </div>
+          )}
         </>
       ) : (
         /* 기본: 내 위치 500m 이내 신고 목록 */
