@@ -1,14 +1,17 @@
+'use client';
+
 import { useEffect, useRef, useState } from 'react';
 import type { Report, GeoPoint } from '@/types';
-import { DEFAULT_CENTER } from '@/constants/categories';
 import { loadKakaoMap, hasKakaoKey } from '@/lib/kakaoMap';
 import { Icon } from '@/components/common/Icon';
 
 interface Props {
   reports: Report[];
-  center?: GeoPoint;
-  selectedId?: string | null;
-  onSelect?: (id: string) => void;
+  center: GeoPoint;
+  /** 내 현재 위치 — 지도 위에 항상 표시되는 파란 점 마커 */
+  myLocation?: GeoPoint | null;
+  /** 마커를 눌렀을 때 (해당 신고 상세로 이동시키는 용도) */
+  onSelectReport?: (id: string) => void;
 }
 
 /**
@@ -20,36 +23,96 @@ export function MapView(props: Props) {
   return <KakaoMap {...props} />;
 }
 
-function KakaoMap({ reports, center = DEFAULT_CENTER, onSelect }: Props) {
-  const ref = useRef<HTMLDivElement>(null);
+function KakaoMap({ reports, center, myLocation, onSelectReport }: Props) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mapRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const kakaoRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const markersRef = useRef<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const myMarkerRef = useRef<any>(null);
   const [failed, setFailed] = useState(false);
+  const [ready, setReady] = useState(false);
 
+  // 지도 최초 1회 생성
   useEffect(() => {
     let cancelled = false;
     loadKakaoMap()
       .then((kakao) => {
-        if (cancelled || !ref.current) return;
-        const map = new kakao.maps.Map(ref.current, {
+        if (cancelled || !containerRef.current) return;
+        kakaoRef.current = kakao;
+        mapRef.current = new kakao.maps.Map(containerRef.current, {
           center: new kakao.maps.LatLng(center.lat, center.lng),
           level: 4,
         });
-        reports.forEach((r) => {
-          const marker = new kakao.maps.Marker({
-            position: new kakao.maps.LatLng(r.location.lat, r.location.lng),
-            map,
-          });
-          kakao.maps.event.addListener(marker, 'click', () => onSelect?.(r.id));
-        });
+        setReady(true);
       })
       .catch(() => setFailed(true));
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reports]);
+  }, []);
+
+  // center prop이 바뀌면 (현재 위치 이동 / 검색 결과) 부드럽게 이동
+  useEffect(() => {
+    if (!ready || !mapRef.current || !kakaoRef.current) return;
+    const kakao = kakaoRef.current;
+    mapRef.current.panTo(new kakao.maps.LatLng(center.lat, center.lng));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [center.lat, center.lng, ready]);
+
+  // 신고 마커 렌더링 (카테고리 필터 등으로 reports가 바뀌면 다시 그림)
+  useEffect(() => {
+    if (!ready || !mapRef.current || !kakaoRef.current) return;
+    const kakao = kakaoRef.current;
+
+    markersRef.current.forEach((m) => m.setMap(null));
+    markersRef.current = reports.map((r) => {
+      const marker = new kakao.maps.Marker({
+        position: new kakao.maps.LatLng(r.location.lat, r.location.lng),
+        map: mapRef.current,
+      });
+      kakao.maps.event.addListener(marker, 'click', () => onSelectReport?.(r.id));
+      return marker;
+    });
+
+    return () => {
+      markersRef.current.forEach((m) => m.setMap(null));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reports, ready, onSelectReport]);
+
+  // 내 현재 위치 마커 (파란 점) — 검색/이동으로 지도가 움직여도 항상 지도 위에 남는다.
+  useEffect(() => {
+    if (!ready || !mapRef.current || !kakaoRef.current || !myLocation) return;
+    const kakao = kakaoRef.current;
+    const pos = new kakao.maps.LatLng(myLocation.lat, myLocation.lng);
+
+    if (!myMarkerRef.current) {
+      myMarkerRef.current = new kakao.maps.CustomOverlay({
+        position: pos,
+        content:
+          '<div style="position:relative;width:18px;height:18px;">' +
+          '<span style="position:absolute;inset:0;border-radius:9999px;background:rgba(59,130,246,0.35);animation:snPing 1.6s ease-out infinite;"></span>' +
+          '<span style="position:absolute;top:3px;left:3px;width:12px;height:12px;border-radius:9999px;background:#3B82F6;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.4);"></span>' +
+          '</div>',
+        map: mapRef.current,
+        yAnchor: 0.5,
+        xAnchor: 0.5,
+        zIndex: 5,
+      });
+    } else {
+      myMarkerRef.current.setPosition(pos);
+      myMarkerRef.current.setMap(mapRef.current);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myLocation?.lat, myLocation?.lng, ready]);
 
   if (failed) return <MapUnavailable reason="로드실패" />;
-  return <div ref={ref} className="h-full w-full" />;
+  return <div ref={containerRef} className="h-full w-full" />;
 }
 
 /** Kakao 지도를 쓸 수 없을 때 보여줄 안내 (가짜 지도 없음) */

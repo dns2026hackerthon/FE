@@ -1,5 +1,7 @@
-import { useState } from 'react';
-import type { Report } from '@/types';
+'use client';
+
+import { useRouter } from 'next/navigation';
+import type { Report, GeoPoint } from '@/types';
 import { MapView } from '@/components/map/MapView';
 import { ReportCard } from '@/components/common/ReportCard';
 import { Loading, EmptyState } from '@/components/common/State';
@@ -8,11 +10,22 @@ import { Icon } from '@/components/common/Icon';
 interface Props {
   reports: Report[];
   loading: boolean;
+  center: GeoPoint;
+  myLocation: GeoPoint | null;
+  locating: boolean;
+  onLocateMe: () => void;
 }
 
 /** 지도 + 하단 '이 주변 위험' 목록 */
-export function MapSection({ reports, loading }: Props) {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+export function MapSection({
+  reports,
+  loading,
+  center,
+  myLocation,
+  locating,
+  onLocateMe,
+}: Props) {
+  const router = useRouter();
 
   return (
     <div className="flex flex-1 flex-col">
@@ -20,15 +33,22 @@ export function MapSection({ reports, loading }: Props) {
       <div className="relative mx-4 mt-2 h-[42vh] min-h-[260px] overflow-hidden rounded-card shadow-card">
         <MapView
           reports={reports}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
+          center={center}
+          myLocation={myLocation}
+          onSelectReport={(id) => router.push(`/report/${id}`)}
         />
-        {/* 현재 위치 버튼 */}
+        {/* 현재 위치로 이동 버튼 */}
         <button
-          className="absolute bottom-3 right-3 flex h-10 w-10 items-center justify-center rounded-full bg-surface text-ink shadow-md active:scale-95"
+          onClick={onLocateMe}
+          disabled={locating}
+          className="absolute bottom-3 right-3 flex h-10 w-10 items-center justify-center rounded-full bg-surface text-ink shadow-md active:scale-95 disabled:opacity-60"
           aria-label="현재 위치로"
         >
-          <Icon name="crosshair" size={20} />
+          {locating ? (
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-black/10 border-t-brand" />
+          ) : (
+            <Icon name="crosshair" size={20} />
+          )}
         </button>
       </div>
 

@@ -7,7 +7,8 @@ import { MOCK_REPORTS, MOCK_COMMENTS } from '@/mocks/reports';
  * 실제 서버가 붙으면 이 파일과 api/* 의 구현만 교체하면 된다.
  */
 
-const LS_KEY = 'safe-neighborhood:db:v1';
+// v2: 시드(목업) 데이터 제거 — 이전 버전에 저장된 가짜 신고를 버린다.
+const LS_KEY = 'safe-neighborhood:db:v2';
 
 interface DbShape {
   reports: Report[];

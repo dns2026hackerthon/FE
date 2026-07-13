@@ -1,5 +1,7 @@
 // Kakao Maps SDK 동적 로더.
-// VITE_KAKAO_MAP_KEY 가 있으면 실제 SDK를 불러오고, 없으면 플레이스홀더로 폴백한다.
+// NEXT_PUBLIC_KAKAO_MAP_KEY 가 있으면 실제 SDK를 불러오고, 없으면 지도를 사용할 수 없다.
+
+import type { GeoPoint } from '@/types';
 
 const KAKAO_KEY = process.env.NEXT_PUBLIC_KAKAO_MAP_KEY;
 
@@ -37,4 +39,22 @@ export function loadKakaoMap(): Promise<typeof window.kakao> {
   });
 
   return loadPromise;
+}
+
+/** 키워드로 장소/지역을 검색해 첫 결과의 좌표를 반환한다. (지역검색) */
+export async function searchKakaoPlace(query: string): Promise<GeoPoint | null> {
+  if (!hasKakaoKey) return null;
+  const kakao = await loadKakaoMap().catch(() => null);
+  if (!kakao) return null;
+
+  return new Promise((resolve) => {
+    const places = new kakao.maps.services.Places();
+    places.keywordSearch(query, (data: Array<{ x: string; y: string }>, status: string) => {
+      if (status === kakao.maps.services.Status.OK && data.length > 0) {
+        resolve({ lat: parseFloat(data[0].y), lng: parseFloat(data[0].x) });
+      } else {
+        resolve(null);
+      }
+    });
+  });
 }
