@@ -1,0 +1,151 @@
+'use client';
+
+import { useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useDraftStore } from '@/store/draftStore';
+import { analyzePhoto } from '@/api/ai';
+import { fileToDataUrl } from '@/lib/image';
+import { AppLayout } from '@/components/layout/AppLayout';
+import { TopBar } from '@/components/layout/TopBar';
+import { Icon } from '@/components/common/Icon';
+import { Button } from '@/components/common/Button';
+
+export default function ReportPhotoPage() {
+  const router = useRouter();
+  const { draft, setImage, applyAi, reset } = useDraftStore();
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const albumRef = useRef<HTMLInputElement>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+
+  const onPick = async (file?: File | null) => {
+    if (!file) return;
+    const dataUrl = await fileToDataUrl(file);
+    setImage(dataUrl);
+    // AI 분석 시작 (백그라운드)
+    setAnalyzing(true);
+    try {
+      const suggestion = await analyzePhoto(dataUrl);
+      applyAi(suggestion);
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  const goNext = () => router.push('/report/new/details');
+
+  const onBack = () => {
+    reset();
+    router.push('/');
+  };
+
+  return (
+    <AppLayout withNav={false}>
+      <TopBar subtitle="신고 작성 · 1/2" title="현장 사진 첨부" showBack onBack={onBack} />
+
+      <div className="flex flex-1 flex-col px-5 py-4">
+        {/* 미리보기 or 안내 */}
+        {draft.imageDataUrl ? (
+          <div className="relative overflow-hidden rounded-card shadow-card">
+            <img
+              src={draft.imageDataUrl}
+              alt="첨부된 사진"
+              className="aspect-[4/3] w-full object-cover"
+            />
+            {analyzing && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-navy/50 text-white">
+                <Icon name="sparkles" size={26} />
+                <p className="text-sm font-semibold">AI가 위험 정보를 분석 중...</p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center rounded-card border-2 border-dashed border-black/10 bg-surface py-12 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brand-light text-brand-dark">
+              <Icon name="camera" size={30} />
+            </div>
+            <p className="mt-4 text-[15px] font-bold text-ink">
+              사진 첨부가 먼저 필요해요
+            </p>
+            <p className="mt-1 text-sm text-ink-muted">
+              사진 선택 <span className="text-risk-high">*</span> 1장 이상
+            </p>
+          </div>
+        )}
+
+        {/* 사진 촬영 / 앨범 선택 */}
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <PickCard
+            icon="camera"
+            title="사진 촬영"
+            desc="카메라로 바로 촬영"
+            onClick={() => cameraRef.current?.click()}
+          />
+          <PickCard
+            icon="image"
+            title="앨범에서 선택"
+            desc="기존 사진 불러오기"
+            onClick={() => albumRef.current?.click()}
+          />
+        </div>
+
+        <input
+          ref={cameraRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={(e) => onPick(e.target.files?.[0])}
+        />
+        <input
+          ref={albumRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => onPick(e.target.files?.[0])}
+        />
+
+        <div className="mt-auto pt-6">
+          <Button
+            size="lg"
+            fullWidth
+            disabled={!draft.imageDataUrl || analyzing}
+            onClick={goNext}
+          >
+            다음: 위험 정보 입력
+            <Icon name="chevron-right" size={20} />
+          </Button>
+          <p className="mt-3 text-center text-[12px] text-ink-faint">
+            사진을 선택하면 다음 단계로 이동할 수 있어요.
+          </p>
+        </div>
+      </div>
+    </AppLayout>
+  );
+}
+
+function PickCard({
+  icon,
+  title,
+  desc,
+  onClick,
+}: {
+  icon: 'camera' | 'image';
+  title: string;
+  desc: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex flex-col items-center gap-2 rounded-card bg-surface px-3 py-5 shadow-card active:scale-[0.98] transition"
+    >
+      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-navy text-brand">
+        <Icon name={icon} size={22} />
+      </div>
+      <div className="text-center">
+        <p className="text-[14px] font-bold text-ink">{title}</p>
+        <p className="text-[11px] text-ink-muted">{desc}</p>
+      </div>
+    </button>
+  );
+}
