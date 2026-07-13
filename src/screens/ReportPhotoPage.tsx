@@ -4,7 +4,7 @@ import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDraftStore } from '@/store/draftStore';
 import { analyzePhoto } from '@/api/ai';
-import { fileToDataUrl } from '@/lib/image';
+import { compressImage } from '@/lib/image';
 import { getCurrentPosition } from '@/lib/geolocation';
 import { reverseGeocode } from '@/lib/kakaoMap';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -18,6 +18,7 @@ export default function ReportPhotoPage() {
   const cameraRef = useRef<HTMLInputElement>(null);
   const albumRef = useRef<HTMLInputElement>(null);
   const [analyzing, setAnalyzing] = useState(false);
+  const [pickError, setPickError] = useState<string | null>(null);
   // 인제스천(사진 읽기 → 업로드 → AI 분석) 진행률 0~100
   const [progress, setProgress] = useState(0);
   const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -31,6 +32,7 @@ export default function ReportPhotoPage() {
 
   const onPick = async (file?: File | null) => {
     if (!file) return;
+    setPickError(null);
     setAnalyzing(true);
     setProgress(5); // 파일 읽기 시작
     // 분석 완료 전까지 진행률을 단계적으로 올린다 (완료 시 100%)
@@ -39,9 +41,11 @@ export default function ReportPhotoPage() {
       setProgress((p) => (p < 90 ? p + 5 : p));
     }, 120);
     try {
-      const dataUrl = await fileToDataUrl(file);
+      // 원본을 그대로 들고 있지 않고 즉시 축소 인코딩 — 모바일 카메라
+      // 원본(수십 MB)을 그대로 base64로 저장하면 메모리 부족으로 죽는다.
+      const dataUrl = await compressImage(file);
       setImage(dataUrl);
-      setProgress((p) => Math.max(p, 30)); // 읽기 완료
+      setProgress((p) => Math.max(p, 30)); // 압축 완료
 
       // 기본 위치 = 촬영/이미지 삽입 시점의 기기 GPS (2단계에서 직접 검색/지도 지정으로 변경 가능)
       const locationPromise = getCurrentPosition()
@@ -60,6 +64,8 @@ export default function ReportPhotoPage() {
       applyAi(suggestion);
       await locationPromise;
       setProgress(100);
+    } catch {
+      setPickError('사진을 처리하지 못했어요. 다른 사진으로 다시 시도해주세요.');
     } finally {
       stopProgress();
       setAnalyzing(false);
@@ -113,6 +119,12 @@ export default function ReportPhotoPage() {
               사진 선택 <span className="text-risk-high">*</span> 1장 이상
             </p>
           </div>
+        )}
+
+        {pickError && (
+          <p className="mt-3 text-center text-[13px] font-medium text-risk-high">
+            {pickError}
+          </p>
         )}
 
         {/* 사진 촬영 / 앨범 선택 */}

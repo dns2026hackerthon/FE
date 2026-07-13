@@ -1,10 +1,12 @@
 import type { AiSuggestion } from '@/types';
-import { delay } from './http';
+import { USE_MOCK, delay, request } from './http';
+import { dataUrlToBlob } from '@/lib/image';
 
 /**
- * 사진 기반 AI 위험 분석 (스텁).
- * 실제로는 서버에 이미지를 올려 위험 유형/위험도/설명을 추론한다.
- * 위치는 AI가 아니라 기기 GPS로 얻으므로 여기서 제안하지 않는다.
+ * 사진 기반 AI 위험 분석.
+ * USE_MOCK이면 그럴듯한 예시값을, 아니면 서버(POST /ai/analyze)에 이미지를
+ * 올려 위험 유형/위험도/설명을 추론한다. 위치는 AI가 아니라 기기 GPS로
+ * 얻으므로 여기서 제안하지 않는다.
  */
 const SAMPLES: AiSuggestion[] = [
   {
@@ -30,8 +32,14 @@ const SAMPLES: AiSuggestion[] = [
   },
 ];
 
-export async function analyzePhoto(_imageDataUrl: string): Promise<AiSuggestion> {
-  void _imageDataUrl;
+export async function analyzePhoto(imageDataUrl: string): Promise<AiSuggestion> {
+  if (!USE_MOCK) {
+    const blob = await dataUrlToBlob(imageDataUrl);
+    const form = new FormData();
+    form.append('image', blob, 'photo.jpg');
+    return request<AiSuggestion>('/ai/analyze', { method: 'POST', body: form });
+  }
+
   // 데모: 랜덤 샘플 하나 반환
   const pick = SAMPLES[Math.floor(Math.random() * SAMPLES.length)] ?? {
     hazardType: '기타',
