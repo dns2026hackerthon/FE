@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Report, GeoPoint } from '@/types';
 import { loadKakaoMap, hasKakaoKey } from '@/lib/kakaoMap';
+import { clusterByLocation } from '@/lib/geolocation';
 import { Icon } from '@/components/common/Icon';
 
 interface Props {
@@ -15,8 +16,8 @@ interface Props {
   moveSeq?: number;
   /** 내 현재 위치 — 지도 위에 항상 표시되는 파란 점 마커 */
   myLocation?: GeoPoint | null;
-  /** 마커를 눌렀을 때 (해당 신고를 선택하는 용도) */
-  onSelectReport?: (id: string) => void;
+  /** 마커(클러스터)를 눌렀을 때 — 같은 위치에 묶인 신고 id 목록을 넘겨준다 */
+  onSelectReports?: (ids: string[]) => void;
 }
 
 /**
@@ -28,7 +29,7 @@ export function MapView(props: Props) {
   return <KakaoMap {...props} />;
 }
 
-function KakaoMap({ reports, center, moveSeq = 0, myLocation, onSelectReport }: Props) {
+function KakaoMap({ reports, center, moveSeq = 0, myLocation, onSelectReports }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapRef = useRef<any>(null);
@@ -70,26 +71,57 @@ function KakaoMap({ reports, center, moveSeq = 0, myLocation, onSelectReport }: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [center.lat, center.lng, moveSeq, ready]);
 
-  // 신고 마커 렌더링 (카테고리 필터 등으로 reports가 바뀌면 다시 그림)
+  // 신고 마커 렌더링 — 근접 좌표는 하나의 마커로 묶는다(클러스터링).
+  // 클러스터 클릭 시 묶인 신고 id 목록을 넘긴다.
   useEffect(() => {
     if (!ready || !mapRef.current || !kakaoRef.current) return;
     const kakao = kakaoRef.current;
 
     markersRef.current.forEach((m) => m.setMap(null));
-    markersRef.current = reports.map((r) => {
-      const marker = new kakao.maps.Marker({
-        position: new kakao.maps.LatLng(r.location.lat, r.location.lng),
+
+    const clusters = clusterByLocation(
+      reports.map((r) => ({ id: r.id, location: r.location })),
+    );
+
+    markersRef.current = clusters.map((cluster) => {
+      const position = new kakao.maps.LatLng(
+        cluster.center.lat,
+        cluster.center.lng,
+      );
+
+      if (cluster.ids.length === 1) {
+        const marker = new kakao.maps.Marker({ position, map: mapRef.current });
+        kakao.maps.event.addListener(marker, 'click', () =>
+          onSelectReports?.(cluster.ids),
+        );
+        return marker;
+      }
+
+      // 2건 이상 — 개수 배지가 있는 커스텀 마커
+      const el = document.createElement('div');
+      el.textContent = String(cluster.ids.length);
+      el.style.cssText =
+        'display:flex;align-items:center;justify-content:center;' +
+        'min-width:28px;height:28px;padding:0 6px;border-radius:9999px;' +
+        'background:#DC2626;color:#fff;font-size:13px;font-weight:700;' +
+        'border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.45);cursor:pointer;';
+      el.addEventListener('click', () => onSelectReports?.(cluster.ids));
+
+      return new kakao.maps.CustomOverlay({
+        position,
+        content: el,
         map: mapRef.current,
+        yAnchor: 0.5,
+        xAnchor: 0.5,
+        zIndex: 4,
       });
-      kakao.maps.event.addListener(marker, 'click', () => onSelectReport?.(r.id));
-      return marker;
     });
 
     return () => {
       markersRef.current.forEach((m) => m.setMap(null));
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reports, ready, onSelectReport]);
+  }, [reports, ready, onSelectReports]);
 
   // 내 현재 위치 마커 (파란 점) — 검색/이동으로 지도가 움직여도 항상 지도 위에 남는다.
   useEffect(() => {

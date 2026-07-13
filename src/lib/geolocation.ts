@@ -12,6 +12,30 @@ export function distanceMeters(a: GeoPoint, b: GeoPoint): number {
   return 2 * R * Math.asin(Math.sqrt(s));
 }
 
+/** 근접한 좌표를 하나의 클러스터로 묶는다 (지도 위 중복 마커 방지) */
+export interface LocationCluster {
+  center: GeoPoint;
+  ids: string[];
+}
+
+export function clusterByLocation(
+  points: Array<{ id: string; location: GeoPoint }>,
+  thresholdMeters = 25,
+): LocationCluster[] {
+  const clusters: LocationCluster[] = [];
+  for (const p of points) {
+    const existing = clusters.find(
+      (c) => distanceMeters(c.center, p.location) <= thresholdMeters,
+    );
+    if (existing) {
+      existing.ids.push(p.id);
+    } else {
+      clusters.push({ center: { ...p.location }, ids: [p.id] });
+    }
+  }
+  return clusters;
+}
+
 export type GeoErrorReason = 'insecure' | 'denied' | 'unavailable' | 'timeout';
 
 export class GeoError extends Error {
