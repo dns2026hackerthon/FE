@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useDraftStore } from '@/store/draftStore';
 import { analyzePhoto } from '@/api/ai';
 import { fileToDataUrl } from '@/lib/image';
+import { getCurrentPosition } from '@/lib/geolocation';
+import { reverseGeocode } from '@/lib/kakaoMap';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { TopBar } from '@/components/layout/TopBar';
 import { Icon } from '@/components/common/Icon';
@@ -12,7 +14,7 @@ import { Button } from '@/components/common/Button';
 
 export default function ReportPhotoPage() {
   const router = useRouter();
-  const { draft, setImage, applyAi, reset } = useDraftStore();
+  const { draft, setImage, applyAi, patch, reset } = useDraftStore();
   const cameraRef = useRef<HTMLInputElement>(null);
   const albumRef = useRef<HTMLInputElement>(null);
   const [analyzing, setAnalyzing] = useState(false);
@@ -40,8 +42,23 @@ export default function ReportPhotoPage() {
       const dataUrl = await fileToDataUrl(file);
       setImage(dataUrl);
       setProgress((p) => Math.max(p, 30)); // 읽기 완료
+
+      // 기본 위치 = 촬영/이미지 삽입 시점의 기기 GPS (2단계에서 직접 검색/지도 지정으로 변경 가능)
+      const locationPromise = getCurrentPosition()
+        .then(async (point) => {
+          const address = await reverseGeocode(point);
+          patch({
+            location: point,
+            address: address ?? `위도 ${point.lat.toFixed(5)}, 경도 ${point.lng.toFixed(5)}`,
+          });
+        })
+        .catch(() => {
+          // 위치 실패 시 2단계에서 직접 검색/지도 지정으로 안내
+        });
+
       const suggestion = await analyzePhoto(dataUrl);
       applyAi(suggestion);
+      await locationPromise;
       setProgress(100);
     } finally {
       stopProgress();

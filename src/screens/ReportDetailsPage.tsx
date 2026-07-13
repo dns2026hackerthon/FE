@@ -19,6 +19,8 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { TopBar } from '@/components/layout/TopBar';
 import { Icon } from '@/components/common/Icon';
 import { Button } from '@/components/common/Button';
+import { LocationPickerModal } from '@/components/map/LocationPickerModal';
+import { DEFAULT_CENTER } from '@/constants/categories';
 
 const RISK_OPTIONS = Array.from(
   { length: RISK_MAX - RISK_MIN + 1 },
@@ -34,6 +36,7 @@ export default function ReportDetailsPage() {
   const [locationStatus, setLocationStatus] = useState<
     'loading' | 'done' | 'failed'
   >(draft.location ? 'done' : 'loading');
+  const [pickerOpen, setPickerOpen] = useState(false);
   // 등록 완료 후 draft가 비워져도 1단계로 튕기지 않도록 하는 플래그
   const submittedRef = useRef(false);
 
@@ -214,29 +217,31 @@ export default function ReportDetailsPage() {
           )}
         </Field>
 
-        {/* 위치 */}
+        {/* 위치 — 촬영/삽입 시점 GPS가 기본값. 직접 검색하거나 지도를 탭해 변경 가능 */}
         <Field label="위치">
-          <div className="flex items-start gap-2 rounded-2xl border border-black/10 bg-surface p-3">
-            <Icon name="map-pin" size={18} className="mt-0.5 text-brand-dark" />
-            <div className="flex-1">
-              <input
-                value={draft.address}
-                onChange={(e) => patch({ address: e.target.value })}
-                className="w-full bg-transparent text-[14px] font-semibold text-ink outline-none"
-                placeholder={
-                  locationStatus === 'loading'
-                    ? '현재 위치 확인 중...'
-                    : '주소를 입력하세요'
-                }
-              />
+          <button
+            type="button"
+            onClick={() => setPickerOpen(true)}
+            className="flex w-full items-start gap-2 rounded-2xl border border-black/10 bg-surface p-3 text-left"
+          >
+            <Icon name="map-pin" size={18} className="mt-0.5 shrink-0 text-brand-dark" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[14px] font-semibold text-ink">
+                {locationStatus === 'loading'
+                  ? '현재 위치 확인 중...'
+                  : draft.address || '위치를 지정해주세요'}
+              </p>
               <p className="mt-0.5 text-[11px] text-ink-muted">
-                {locationStatus === 'loading' && '기기 GPS로 현재 위치를 확인하고 있어요'}
-                {locationStatus === 'done' && '현재 위치(GPS) 기준으로 설정됨 · 주소 수정 가능'}
+                {locationStatus === 'loading' && '기기 GPS로 사진 촬영/선택 위치를 확인하고 있어요'}
+                {locationStatus === 'done' && '탭해서 주소 검색 또는 지도에서 직접 지정'}
                 {locationStatus === 'failed' &&
-                  '위치를 가져올 수 없어요. 위치 권한을 허용해주세요. (HTTPS/localhost 필요)'}
+                  '위치를 가져오지 못했어요. 탭해서 직접 지정해주세요.'}
               </p>
             </div>
-          </div>
+            <span className="shrink-0 self-center rounded-full bg-navy px-3 py-1.5 text-[12px] font-bold text-white">
+              위치 변경
+            </span>
+          </button>
         </Field>
 
         {/* 위험도 — 1~10 정수 */}
@@ -311,6 +316,17 @@ export default function ReportDetailsPage() {
           신고 등록하기
         </Button>
       </div>
+
+      <LocationPickerModal
+        open={pickerOpen}
+        initial={draft.location ?? DEFAULT_CENTER}
+        initialAddress={draft.address}
+        onClose={() => setPickerOpen(false)}
+        onConfirm={(point, address) => {
+          patch({ location: point, address });
+          setLocationStatus('done');
+        }}
+      />
     </AppLayout>
   );
 }

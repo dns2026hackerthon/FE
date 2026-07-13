@@ -75,18 +75,48 @@ export async function reverseGeocode(p: GeoPoint): Promise<string | null> {
 
 /** 키워드로 장소/지역을 검색해 첫 결과의 좌표를 반환한다. (지역검색) */
 export async function searchKakaoPlace(query: string): Promise<GeoPoint | null> {
+  const result = await searchKakaoPlaceDetailed(query);
+  return result?.location ?? null;
+}
+
+export interface PlaceSearchResult {
+  location: GeoPoint;
+  address: string;
+}
+
+/** 키워드로 장소/주소를 검색해 좌표 + 주소 문자열을 함께 반환한다. */
+export async function searchKakaoPlaceDetailed(
+  query: string,
+): Promise<PlaceSearchResult | null> {
   if (!hasKakaoKey) return null;
   const kakao = await loadKakaoMap().catch(() => null);
   if (!kakao) return null;
 
   return new Promise((resolve) => {
     const places = new kakao.maps.services.Places();
-    places.keywordSearch(query, (data: Array<{ x: string; y: string }>, status: string) => {
-      if (status === kakao.maps.services.Status.OK && data.length > 0) {
-        resolve({ lat: parseFloat(data[0].y), lng: parseFloat(data[0].x) });
-      } else {
-        resolve(null);
-      }
-    });
+    places.keywordSearch(
+      query,
+      (
+        data: Array<{
+          x: string;
+          y: string;
+          place_name: string;
+          address_name: string;
+          road_address_name?: string;
+        }>,
+        status: string,
+      ) => {
+        if (status === kakao.maps.services.Status.OK && data.length > 0) {
+          const first = data[0];
+          resolve({
+            location: { lat: parseFloat(first.y), lng: parseFloat(first.x) },
+            address:
+              first.road_address_name || first.address_name || first.place_name,
+          });
+        } else {
+          resolve(null);
+        }
+      },
+    );
   });
 }
