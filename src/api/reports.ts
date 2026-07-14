@@ -14,16 +14,18 @@ import { dataUrlToBlob } from '@/lib/image';
 
 export interface ListParams {
   category?: CategoryId | null; // null/undefined = 전체
+  hazardType?: string | null; // 세부 위험유형 필터 (부분 일치)
   sort?: SortKey;
   query?: string;
 }
 
 export async function listReports(params: ListParams = {}): Promise<Report[]> {
-  const { category, sort = 'latest', query } = params;
+  const { category, hazardType, sort = 'latest', query } = params;
 
   if (!USE_MOCK) {
     const qs = new URLSearchParams();
     if (category) qs.set('category', category);
+    if (hazardType?.trim()) qs.set('hazardType', hazardType.trim());
     if (sort) qs.set('sort', sort);
     if (query?.trim()) qs.set('query', query.trim());
     const suffix = qs.toString() ? `?${qs}` : '';
@@ -33,6 +35,11 @@ export async function listReports(params: ListParams = {}): Promise<Report[]> {
   let items = [...mockDb.reports];
 
   if (category) items = items.filter((r) => r.category === category);
+
+  if (hazardType && hazardType.trim()) {
+    const h = hazardType.trim().toLowerCase();
+    items = items.filter((r) => r.hazardType.toLowerCase().includes(h));
+  }
 
   if (query && query.trim()) {
     const q = query.trim().toLowerCase();

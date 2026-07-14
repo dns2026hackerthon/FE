@@ -15,6 +15,7 @@ import { Icon } from '@/components/common/Icon';
 import { SearchBar } from '@/components/main/SearchBar';
 import { ViewToggle } from '@/components/main/ViewToggle';
 import { CategoryFilter } from '@/components/common/CategoryFilter';
+import { CategorySidebar } from '@/components/main/CategorySidebar';
 import { FeedSection } from '@/components/main/FeedSection';
 import { MapSection } from '@/components/main/MapSection';
 import { BottomNav } from '@/components/layout/BottomNav';
@@ -26,10 +27,13 @@ export default function MainPage() {
     setViewMode,
     category,
     setCategory,
+    hazardType,
+    setHazardType,
     sort,
     query,
     setQuery,
   } = useUiStore();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // 지도 중심 좌표(mapCenter)와 내 현재 위치(myLocation)를 분리한다.
   // - mapCenter: 지도가 실제로 보여주는 위치 (검색/현재위치 버튼으로 이동)
@@ -91,8 +95,14 @@ export default function MainPage() {
   // 피드뷰에서만 텍스트 검색어로 신고 목록을 필터링한다.
   // (지도뷰의 검색어는 장소 검색용이라 마커 필터링에 쓰지 않는다)
   const { data, loading } = useAsync(
-    () => listReports({ category, sort, query: viewMode === 'feed' ? query : undefined }),
-    [category, sort, query, viewMode],
+    () =>
+      listReports({
+        category,
+        hazardType,
+        sort,
+        query: viewMode === 'feed' ? query : undefined,
+      }),
+    [category, hazardType, sort, query, viewMode],
   );
   const reports = data ?? [];
 
@@ -118,7 +128,34 @@ export default function MainPage() {
         onSubmit={handleSearchSubmit}
         placeholder={viewMode === 'map' ? '지역·장소 검색' : '위험 정보 검색'}
       />
-      <CategoryFilter value={category} onChange={setCategory} />
+
+      {/* 필터: 사이드바 열기 버튼 + 빠른 대분류 칩 */}
+      <div className="flex items-center gap-2 pl-4 pr-2">
+        <button
+          onClick={() => setSidebarOpen(true)}
+          className="flex h-9 shrink-0 items-center gap-1 rounded-full border border-black/10 bg-surface px-3 text-[13px] font-semibold text-ink-muted active:bg-black/5"
+          aria-label="카테고리 필터 열기"
+        >
+          <Icon name="filter" size={15} />
+          필터
+        </button>
+        <div className="min-w-0 flex-1">
+          <CategoryFilter value={category} onChange={setCategory} />
+        </div>
+      </div>
+
+      {/* 선택된 세부 위험유형 표시 (제거 가능) */}
+      {hazardType && (
+        <div className="px-4 pb-1">
+          <button
+            onClick={() => setHazardType(null)}
+            className="inline-flex items-center gap-1 rounded-full bg-brand-light px-3 py-1 text-[12px] font-bold text-brand-dark"
+          >
+            유형: {hazardType}
+            <Icon name="x" size={13} />
+          </button>
+        </div>
+      )}
 
       {viewMode === 'map' ? (
         <MapSection
@@ -135,6 +172,8 @@ export default function MainPage() {
       ) : (
         <FeedSection reports={reports} loading={loading} />
       )}
+
+      <CategorySidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <BottomNav />
     </div>
