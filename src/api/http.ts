@@ -39,7 +39,12 @@
  *   `Authorization: Bearer <token>` 로 첨부한다 (아래 request()가 자동 처리).
  */
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? '';
+// 끝의 슬래시를 제거해 `${API_BASE_URL}/reports` 처럼 이어붙일 때 `//` 이중
+// 슬래시가 생기지 않도록 한다. (.env 값에 트레일링 슬래시가 있어도 안전)
+export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? '').replace(
+  /\/+$/,
+  '',
+);
 export const USE_MOCK = !API_BASE_URL;
 
 /** 목업 지연 (네트워크 흉내) */
