@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { GeoPoint } from '@/types';
 import { useUiStore } from '@/store/uiStore';
+import { useDraftStore } from '@/store/draftStore';
 import { listReports } from '@/api/reports';
 import { useAsync } from '@/hooks/useAsync';
 import { getCurrentPosition, GeoError } from '@/lib/geolocation';
@@ -39,6 +40,11 @@ export default function MainPage() {
   const [geoError, setGeoError] = useState<string | null>(null);
   // 같은 좌표로도 지도 이동을 강제하기 위한 시퀀스 (버튼 연타 대응)
   const [moveSeq, setMoveSeq] = useState(0);
+
+  // 홈에 도달하면 등록-직후 플래그를 정리 (다음 신고 작성이 막히지 않도록)
+  useEffect(() => {
+    useDraftStore.getState().clearSubmitted();
+  }, []);
 
   useEffect(() => {
     getCurrentPosition()

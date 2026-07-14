@@ -81,7 +81,8 @@ export default function DetailPage() {
   const commentList = comments ?? [];
 
   return (
-    <AppLayout withNav={false}>
+    // 화면 높이를 꽉 채우는 플렉스 컬럼: 내용은 스크롤, 댓글창은 항상 하단 고정.
+    <div className="app-shell flex h-[100dvh] flex-col">
       <TopBar
         title="신고 상세"
         showBack
@@ -98,6 +99,7 @@ export default function DetailPage() {
         }
       />
 
+      <div className="min-h-0 flex-1 overflow-y-auto">
       {/* 사진 */}
       <div className="aspect-[4/3] w-full bg-black/5">
         {current.imageUrl ? (
@@ -198,11 +200,12 @@ export default function DetailPage() {
           )}
         </section>
       </div>
+      </div>
 
-      {/* 댓글 입력 (하단 고정) */}
+      {/* 댓글 입력 — 스크롤 영역 밖 하단 고정 푸터 (화면이 길어져도 항상 보임) */}
       <form
         onSubmit={onSubmitComment}
-        className="safe-bottom sticky bottom-0 z-10 mx-auto flex w-full max-w-app items-center gap-2 border-t border-black/5 bg-surface/95 px-4 py-3 backdrop-blur"
+        className="safe-bottom flex shrink-0 items-center gap-2 border-t border-black/5 bg-surface px-4 py-3"
       >
         <input
           value={commentText}
@@ -213,12 +216,12 @@ export default function DetailPage() {
         <button
           type="submit"
           disabled={!commentText.trim()}
-          className="flex h-11 w-11 items-center justify-center rounded-full bg-brand text-white disabled:opacity-40"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand text-white disabled:opacity-40"
           aria-label="댓글 등록"
         >
           <Icon name="send" size={18} />
         </button>
       </form>
-    </AppLayout>
+    </div>
   );
 }

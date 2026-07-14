@@ -62,7 +62,7 @@ export function FeedCard({ report: initial }: { report: Report }) {
   };
 
   return (
-    <article className="overflow-hidden rounded-card bg-surface shadow-card">
+    <article className="bg-surface">
       {/* 작성자 헤더 */}
       <header className="flex items-center gap-2.5 px-3 py-2.5">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-light text-[13px] font-bold text-brand-dark">
@@ -80,31 +80,13 @@ export function FeedCard({ report: initial }: { report: Report }) {
         <RiskBadge risk={report.risk} />
       </header>
 
-      {/* 정사각 사진 */}
+      {/* 정사각 사진 — 좌우 여백 없이 카드 폭을 꽉 채운다 (인스타 피드) */}
       <button
         onClick={goDetail}
         className="relative block aspect-square w-full"
         aria-label={`${report.title} 상세 보기`}
       >
         <FeedImage report={report} />
-        {/* 이미지 위 오버레이 — 어떤 카테고리 색 위에서도 읽히도록 흰 pill 사용 */}
-        <span className="absolute left-2 top-2 flex flex-wrap items-center gap-1">
-          <span
-            className="inline-flex items-center gap-1 rounded-full bg-white/95 px-2 py-0.5 text-[11px] font-bold shadow-sm"
-            style={{ color: CATEGORY_MAP[report.category].color }}
-          >
-            <span
-              className="h-1.5 w-1.5 rounded-full"
-              style={{ backgroundColor: CATEGORY_MAP[report.category].color }}
-            />
-            {CATEGORY_MAP[report.category].label}
-          </span>
-          {report.hazardType && (
-            <span className="inline-flex items-center rounded-full bg-black/45 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur-sm">
-              {report.hazardType}
-            </span>
-          )}
-        </span>
       </button>
 
       {/* 액션 바 */}
