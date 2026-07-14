@@ -15,7 +15,7 @@ import { ReportGridCard } from '@/components/common/ReportCard';
 import { Loading } from '@/components/common/State';
 import { AuthField } from '@/components/auth/AuthField';
 
-type Dialog = null | 'password' | 'logout' | 'withdraw';
+type Dialog = null | 'nickname' | 'password' | 'logout' | 'withdraw';
 
 export default function MyPage() {
   const router = useRouter();
@@ -28,6 +28,7 @@ export default function MyPage() {
   const [busy, setBusy] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [nickname, setNickname] = useState('');
 
   const { data, loading, reload } = useAsync(
     () => (user ? listMyReports(user.id) : Promise.resolve([])),
@@ -48,6 +49,26 @@ export default function MyPage() {
           ? err.message
           : '사진을 처리하지 못했어요. 다른 사진으로 다시 시도해주세요.',
       );
+    }
+  };
+
+  const openNicknameDialog = () => {
+    setNickname(user?.nickname ?? '');
+    setDialog('nickname');
+  };
+
+  const onChangeNickname = async () => {
+    const next = nickname.trim();
+    if (!next || next === user?.nickname) {
+      setDialog(null);
+      return;
+    }
+    setBusy(true);
+    try {
+      await updateProfile({ nickname: next });
+      setDialog(null);
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -114,13 +135,24 @@ export default function MyPage() {
             </span>
           )}
         </button>
-        <div>
+        <div className="min-w-0">
           <p className="text-[12px] font-semibold text-ink-muted">
             안전한 동네 시민
           </p>
-          <p className="text-[18px] font-extrabold text-ink">
-            {user?.nickname ?? '게스트'}
-          </p>
+          <div className="flex items-center gap-1.5">
+            <p className="truncate text-[18px] font-extrabold text-ink">
+              {user?.nickname ?? '게스트'}
+            </p>
+            {!isGuest && (
+              <button
+                onClick={openNicknameDialog}
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-ink-muted active:bg-black/5"
+                aria-label="닉네임 변경"
+              >
+                <Icon name="edit" size={15} />
+              </button>
+            )}
+          </div>
           {!isGuest && (
             <p className="text-[12px] text-ink-faint">@{user?.username}</p>
           )}
@@ -211,6 +243,13 @@ export default function MyPage() {
         <div className="overflow-hidden rounded-card bg-surface shadow-card">
           {!isGuest && (
             <SettingRow
+              icon="user"
+              label="닉네임 변경"
+              onClick={openNicknameDialog}
+            />
+          )}
+          {!isGuest && (
+            <SettingRow
               icon="lock"
               label="비밀번호 변경"
               onClick={() => setDialog('password')}
@@ -232,6 +271,33 @@ export default function MyPage() {
           )}
         </div>
       </section>
+
+      {/* 닉네임 변경 */}
+      <Modal
+        open={dialog === 'nickname'}
+        onClose={() => setDialog(null)}
+        title="닉네임 변경"
+      >
+        <div className="flex flex-col gap-3">
+          <AuthField
+            label="새 닉네임"
+            type="text"
+            value={nickname}
+            onChange={setNickname}
+            placeholder="새 닉네임을 입력하세요"
+          />
+          <Button
+            size="lg"
+            fullWidth
+            loading={busy}
+            disabled={!nickname.trim() || nickname.trim() === user?.nickname}
+            onClick={onChangeNickname}
+            className="mt-1"
+          >
+            변경하기
+          </Button>
+        </div>
+      </Modal>
 
       {/* 비밀번호 변경 */}
       <Modal
@@ -314,7 +380,7 @@ function SettingRow({
   danger,
   last,
 }: {
-  icon: 'lock' | 'log-out' | 'trash';
+  icon: 'user' | 'lock' | 'log-out' | 'trash';
   label: string;
   onClick: () => void;
   danger?: boolean;
