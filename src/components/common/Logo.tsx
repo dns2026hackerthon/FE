@@ -17,7 +17,7 @@ export function LogoWordmark() {
     <div className="flex items-center gap-2">
       <LogoMark size={32} />
       <div className="leading-tight">
-        <p className="text-[15px] font-extrabold text-ink">안전한 동네</p>
+        <p className="text-[15px] font-extrabold text-ink">dns</p>
         <p className="text-[9px] font-semibold tracking-widest text-ink-faint">
           SAFE NEIGHBORHOOD
         </p>

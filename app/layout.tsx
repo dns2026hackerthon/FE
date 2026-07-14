@@ -3,14 +3,14 @@ import './globals.css';
 import { AppBootstrap } from '@/components/AppBootstrap';
 
 export const metadata: Metadata = {
-  title: '안전한 동네',
+  title: 'dns',
   description: '동네의 위험 정보를 신고하고 공유하는 커뮤니티 안전 서비스',
   manifest: '/manifest.webmanifest',
-  applicationName: '안전한 동네',
+  applicationName: 'dns',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: '안전한 동네',
+    title: 'dns',
   },
   icons: {
     icon: '/favicon.svg',

@@ -46,7 +46,7 @@ export default function LoginPage() {
         {/* 로고 */}
         <div className="mb-8 flex flex-col items-center text-center">
           <LogoMark size={64} />
-          <h1 className="mt-4 text-2xl font-extrabold text-ink">안전한 동네</h1>
+          <h1 className="mt-4 text-2xl font-extrabold text-ink">dns</h1>
           <p className="mt-1 text-[11px] font-bold tracking-[0.2em] text-ink-faint">
             SAFE NEIGHBORHOOD
           </p>
