@@ -81,6 +81,18 @@ export function categoryForHazard(hazardType: string): CategoryId {
   return HAZARD_TO_CATEGORY[hazardType] ?? 'safety';
 }
 
+/** 대분류 카테고리 → 소속 세부 위험유형 목록 (사이드바 계층 표시용) */
+export const HAZARDS_BY_CATEGORY: Record<CategoryId, string[]> =
+  CATEGORIES.reduce(
+    (acc, c) => {
+      acc[c.id] = HAZARD_TYPES.filter(
+        (h) => h !== HAZARD_ETC && categoryForHazard(h) === c.id,
+      );
+      return acc;
+    },
+    {} as Record<CategoryId, string[]>,
+  );
+
 /** 위험도(1~10) 구간별 표시 정보 */
 export function riskMeta(risk: RiskLevel): {
   textClass: string;

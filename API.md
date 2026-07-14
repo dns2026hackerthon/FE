@@ -151,6 +151,7 @@ interface AiSuggestion {
 | 파라미터 | 설명 |
 |---|---|
 | `category` | `CategoryId` 하나로 필터 |
+| `hazardType` | 세부 위험유형 부분 일치 필터 (예: `싱크홀`, `침수`) |
 | `sort` | `latest`(기본) \| `views` \| `likes` |
 | `query` | 제목/주소/설명에 대한 텍스트 검색 |
 
