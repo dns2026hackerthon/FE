@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDraftStore } from '@/store/draftStore';
 import { analyzePhoto } from '@/api/ai';
@@ -14,7 +14,18 @@ import { Button } from '@/components/common/Button';
 
 export default function ReportPhotoPage() {
   const router = useRouter();
-  const { draft, setImage, applyAi, patch, reset } = useDraftStore();
+  const { draft, setImage, applyAi, patch, reset, justSubmitted, clearSubmitted } =
+    useDraftStore();
+
+  // 등록 직후 뒤로가기로 이 작성 화면에 되돌아온 경우 → 피드(홈)로 보낸다.
+  useEffect(() => {
+    if (justSubmitted) {
+      clearSubmitted();
+      router.replace('/');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const cameraRef = useRef<HTMLInputElement>(null);
   const albumRef = useRef<HTMLInputElement>(null);
   const [analyzing, setAnalyzing] = useState(false);

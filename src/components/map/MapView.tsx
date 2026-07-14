@@ -41,6 +41,8 @@ function KakaoMap({ reports, center, moveSeq = 0, myLocation, onSelectReports }:
   const myMarkerRef = useRef<any>(null);
   const [failed, setFailed] = useState(false);
   const [ready, setReady] = useState(false);
+  // 현재 줌 레벨 (Kakao: 값이 클수록 축소). 줌이 바뀌면 병합 강도를 조절한다.
+  const [level, setLevel] = useState(4);
 
   // 지도 최초 1회 생성
   useEffect(() => {
@@ -49,9 +51,15 @@ function KakaoMap({ reports, center, moveSeq = 0, myLocation, onSelectReports }:
       .then((kakao) => {
         if (cancelled || !containerRef.current) return;
         kakaoRef.current = kakao;
-        mapRef.current = new kakao.maps.Map(containerRef.current, {
+        const map = new kakao.maps.Map(containerRef.current, {
           center: new kakao.maps.LatLng(center.lat, center.lng),
           level: 4,
+        });
+        mapRef.current = map;
+        setLevel(map.getLevel());
+        // 줌(확대/축소) 변경 시 레벨을 반영해 마커 병합을 다시 계산한다.
+        kakao.maps.event.addListener(map, 'zoom_changed', () => {
+          setLevel(map.getLevel());
         });
         setReady(true);
       })
@@ -79,8 +87,11 @@ function KakaoMap({ reports, center, moveSeq = 0, myLocation, onSelectReports }:
 
     markersRef.current.forEach((m) => m.setMap(null));
 
+    // 줌 레벨이 축소될수록 더 넓게 묶는다 (레벨4 기준 ~30m, 한 단계마다 2배).
+    const threshold = 30 * Math.pow(2, level - 4);
     const clusters = clusterByLocation(
       reports.map((r) => ({ id: r.id, location: r.location })),
+      threshold,
     );
 
     markersRef.current = clusters.map((cluster) => {
@@ -121,7 +132,7 @@ function KakaoMap({ reports, center, moveSeq = 0, myLocation, onSelectReports }:
       markersRef.current.forEach((m) => m.setMap(null));
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reports, ready, onSelectReports]);
+  }, [reports, ready, level, onSelectReports]);
 
   // 내 현재 위치 마커 (파란 점) — 검색/이동으로 지도가 움직여도 항상 지도 위에 남는다.
   useEffect(() => {

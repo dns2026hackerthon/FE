@@ -67,7 +67,7 @@ export function FeedSection({ reports, loading }: Props) {
           ))}
         </div>
       ) : (
-        <div className="flex flex-col gap-3 px-4 pt-1">
+        <div className="flex flex-col gap-2 pt-1">
           {reports.map((r) => (
             <FeedCard key={r.id} report={r} />
           ))}

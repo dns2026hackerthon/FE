@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDraftStore } from '@/store/draftStore';
 import { useAuthStore } from '@/store/authStore';
+import { useUiStore } from '@/store/uiStore';
 import { createReport } from '@/api/reports';
 import {
   HAZARD_TYPES,
@@ -30,7 +31,8 @@ const RISK_OPTIONS = Array.from(
 export default function ReportDetailsPage() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const { draft, aiSuggestion, patch, reset } = useDraftStore();
+  const { draft, aiSuggestion, patch, reset, markSubmitted } = useDraftStore();
+  const setViewMode = useUiStore((s) => s.setViewMode);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [locationStatus, setLocationStatus] = useState<
@@ -137,8 +139,10 @@ export default function ReportDetailsPage() {
         authorId: user?.id ?? 'guest',
         authorNickname: user?.nickname ?? '익명',
       });
-      // 리셋으로 인한 가드 리다이렉트를 막고 상세로 이동
+      // 등록 후 뒤로가기는 피드로 가야 하므로 뷰를 피드로 전환하고 플래그를 남긴다.
       submittedRef.current = true;
+      markSubmitted();
+      setViewMode('feed');
       router.replace(`/report/${created.id}`);
       reset();
     } catch (err) {
